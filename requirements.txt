@@ -1,3 +1,2 @@
 wand
 ffmpeg-python
-mediainfo
