@@ -1,0 +1,3 @@
+wand
+ffmpeg-python
+mediainfo
