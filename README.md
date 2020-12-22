@@ -25,10 +25,12 @@ Choose distortion level, fps number, if you want distorted audio or not and tap 
 
 Examples of work are presented below.
 
-##Original:
+## Original:
 
-[![Original](https://img.youtube.com/vi/BGMMuYxcXpo/0.jpg)](https://www.youtube.com/watch?v=BGMMuYxcXpo)
+[![Original](https://img.youtube.com/vi/O5tDNWA31vg/0.jpg)](https://www.youtube.com/watch?v=O5tDNWA31vg)  
+Youtube Link
 
-##Distorted:
+## Distorted:
 
-[![Distorted](https://img.youtube.com/vi/rjC_Q03OWBs/0.jpg)](https://www.youtube.com/watch?v=rjC_Q03OWBs)
+[![Distorted](https://img.youtube.com/vi/-i2lPdw6UXU/0.jpg)](https://www.youtube.com/watch?v=-i2lPdw6UXU)  
+Youtube Link
