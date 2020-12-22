@@ -1,6 +1,7 @@
 # Distortify Video
 
-A GTK app that lets you distort videos using a Content Aware Scale like filter
+A GTK app that lets you distort videos using a Content Aware Scale like filter.  
+Made it to work with nautilus-python addons as a right click option for videos.
 
 # Installing
 
