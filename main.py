@@ -24,18 +24,15 @@ if '/' in currentVideo: currentVideo = currentVideo[currentVideo.rfind('/')+1:]
 outVideoPath = currentVideoPath[:currentVideoPath.rfind('.')]+"_distorted.mp4"
 distortionPercentage = 80
 progressValue = 0
+distortAudio = False
 
 probe = ffmpeg.probe(currentVideoPath)
-info = [stream for stream in probe["streams"] if stream["codec_type"] == "video"]
-videoW = info[0]['width']
-videoH = info[0]['height']
-videoFPS = info[0]['r_frame_rate'].split('/')
+videoInfo = [stream for stream in probe["streams"] if stream["codec_type"] == "video"]
+videoW = videoInfo[0]['width']
+videoH = videoInfo[0]['height']
+videoFPS = videoInfo[0]['r_frame_rate'].split('/')
 videoFPS = int(int(videoFPS[0]) / int(videoFPS[1]))
 fpsValue = videoFPS
-
-print(f"Video: {currentVideo} ({videoW}x{videoH}@{videoFPS})")
-print(f"Distortion: {distortionPercentage}%")
-print(f"FPS: {fpsValue}")
 
 builder = Gtk.Builder()
 builder.add_from_file(f"{scriptFolder}/main.glade")
@@ -44,6 +41,7 @@ progress = builder.get_object("progress")
 distortionWidget = builder.get_object("distortionWidget")
 framerateWidget = builder.get_object("framerateWidget")
 activateButton = builder.get_object("activateButton")
+audioCheck = builder.get_object("audioCheck")
 
 framerateWidget.set_value(fpsValue)
 
@@ -51,32 +49,38 @@ def toggleInterface(toggle):
     distortionWidget.set_sensitive(toggle)
     framerateWidget.set_sensitive(toggle)
     activateButton.set_sensitive(toggle)
+    audioCheck.set_sensitive(toggle)
 
 def closeApp():
     Gtk.main_quit()
 
 def distortify():
     GLib.idle_add(toggleInterface, False)
+    # Reset progress
     progressValue = 0
     progress.set_fraction(progressValue)
     print(f"Video: {currentVideo} ({videoW}x{videoH}@{videoFPS})")
     print(f"Distortion: {distortionPercentage}%")
     print(f"FPS: {fpsValue}")
+    # Extract Frames
+    shutil.rmtree(f'{scriptFolder}/frames', ignore_errors=True)
     makedirs(f'{scriptFolder}/frames', exist_ok=True)
     (
         ffmpeg
         .input(currentVideoPath)
         .output(f"{scriptFolder}/frames/frame%04d.png", r=fpsValue)
-        .run()
+        .run(quiet=True)
     )
     frames = listdir(f"{scriptFolder}/frames")
     frames.sort()
     framesN = len(frames)
     deltaFramesN = 1 / framesN
     print(f"Total Frames: {framesN}")
+    # Distort Frames
     dSize = (distortionPercentage / framesN) / 100
     iSize = 1
     for frame in frames:
+        if not frame.endswith('png'): continue
         with Image(filename=f"{scriptFolder}/frames/{frame}") as i:
             i.liquid_rescale(width=int(videoW*iSize), height=int(videoH*iSize))
             i.resize(width=videoW, height=videoH)
@@ -85,12 +89,28 @@ def distortify():
             progress.set_fraction(progressValue)
         iSize -= dSize
     print("Done")
-    (
-        ffmpeg
-        .input(f'{scriptFolder}/frames/*.png', pattern_type='glob', framerate=fpsValue)
-        .output(outVideoPath, vcodec="libx264", bf=2, flags="+cgop", pix_fmt="yuv420p", movflags="faststart")
-        .run()
+    # Prepare video stream
+    videoStream = ffmpeg.input(f'{scriptFolder}/frames/*.png', pattern_type='glob', framerate=fpsValue)
+    # Prepare audio stream
+    if distortAudio:
+        audioStream = (
+            ffmpeg
+            .input(currentVideoPath)
+            .audio
+            .filter('vibrato', f=10.0, d=0.5)
+            .filter('aformat', 's16p')
+        )
+        finalOutput = ffmpeg.concat(videoStream.video, audioStream, v=1, a=1)
+    else:
+        finalOutput = videoStream
+    finalOutput = finalOutput.output(outVideoPath,
+        vcodec="libx264",
+        bf=2,
+        flags="+cgop",
+        pix_fmt="yuv420p",
+        movflags="faststart"
     )
+    finalOutput.run(overwrite_output=True)
     shutil.rmtree(f'{scriptFolder}/frames', ignore_errors=True)
     GLib.idle_add(toggleInterface, True)
     GLib.idle_add(closeApp)
@@ -110,6 +130,10 @@ class Handler:
     def fpsChanged(self, spinner):
         global fpsValue
         fpsValue = int(spinner.get_value())
+
+    def audioToggled(self, check):
+        global distortAudio
+        distortAudio = check.get_mode()
 
 builder.connect_signals(Handler())
 window = builder.get_object("mainWindow")
